@@ -1,0 +1,14 @@
+# Dependencies and Build Artifacts
+whisper.cpp/
+__pycache__/
+*.pyc
+
+# Configuration (contains local paths/devices)
+config.env
+
+# Temporary Runtime Files
+*.wav
+*.txt
+*.pid
+*.log
+/tmp/voice_agent*
