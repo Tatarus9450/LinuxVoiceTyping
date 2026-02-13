@@ -12,11 +12,25 @@ Designed for seamless integration with any application via global hotkeys.
 - **Smart Typing**: Uses Clipboard Paste (Ctrl+V) to ensure correct text output regardless of keyboard layout.
 - **Persistent**: Starts automatically on login and stays ready in the background.
 
-## 🚀 Quick Start
+## 🚀 Installation
 
-The application is already installed and configured to run on startup.
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/LinuxVoiceTyping.git
+    cd LinuxVoiceTyping
+    ```
+2.  **Run the installer**:
+    ```bash
+    chmod +x install.sh
+    ./install.sh
+    ```
+    This script will:
+    - Install all system dependencies.
+    - Clone and build `whisper.cpp`.
+    - Download the AI model.
+    - Configure global shortcuts (`Meta+H`).
 
-### Shortcuts
+3.  **Start using it!** (You may need to restart your computer for shortcuts to take effect).
 
 | Shortcut | Action |
 | :--- | :--- |
