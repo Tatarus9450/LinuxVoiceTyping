@@ -1,75 +1,119 @@
-# Linux Voice Typing (Thai/English) 🇹🇭🇺🇸
+# Linux Voice Typing �
 
-A modern, high-performance offline voice typing agent for Linux, powered by `whisper.cpp`.
-Designed for seamless integration with any application via global hotkeys.
+Offline voice-to-text for Linux — speak and type in **Thai** and **English**.  
+Powered by [whisper.cpp](https://github.com/ggerganov/whisper.cpp) with **Vulkan GPU** acceleration.
+
+---
 
 ## ✨ Features
 
-- **Offline Privacy**: All transcription happens locally on your machine. No data is sent to the cloud.
-- **High Performance**: Optimized for multi-core CPUs (uses 10+ threads).
-- **Dual Language**: Supports **Thai** and **English** with instant toggling.
-- **Modern UI**: Sleek, dark-mode overlay showing real-time status (Listening, Thinking, Typing).
-- **Smart Typing**: Uses Clipboard Paste (Ctrl+V) to ensure correct text output regardless of keyboard layout.
-- **Persistent**: Starts automatically on login and stays ready in the background.
+- **100% Offline** — All transcription runs locally. No cloud, no data leaves your machine.
+- **Vulkan GPU Accelerated** — Uses AMD/Intel integrated GPU for fast inference.
+- **Thai + English** — Toggle between languages instantly with a hotkey.
+- **Works Everywhere** — Types into any focused application via clipboard paste.
+- **Minimal UI** — Sleek dark overlay shows real-time status (Listening → Thinking → Typing).
+- **Persistent** — Starts on login via `xbindkeys` global shortcuts.
 
-## 🚀 Installation
+---
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/YOUR_USERNAME/LinuxVoiceTyping.git
-    cd LinuxVoiceTyping
-    ```
-2.  **Run the installer**:
-    ```bash
-    chmod +x install.sh
-    ./install.sh
-    ```
-    This script will:
-    - Install all system dependencies.
-    - Clone and build `whisper.cpp`.
-    - Download the AI model.
-    - Configure global shortcuts (`Meta+H`).
+## 🖥️ Requirements
 
-3.  **Start using it!** (You may need to restart your computer for shortcuts to take effect).
+- **OS**: Linux with X11 (tested on Kubuntu 24.04 / KDE Plasma)
+- **CPU**: x86_64 (multi-core recommended)
+- **GPU**: Vulkan-capable (AMD/Intel iGPU works great)
+- **Microphone**: Any ALSA-compatible input device
+
+---
+
+## 🚀 Quick Start
+
+```bash
+git clone https://github.com/Tatarus9450/LinuxVoiceTyping.git
+cd LinuxVoiceTyping
+chmod +x install.sh
+./install.sh
+```
+
+The installer will:
+1. Install all system dependencies
+2. Clone and build `whisper.cpp` with Vulkan support
+3. Download the AI model (`ggml-medium.bin`, ~1.5 GB)
+4. Configure global hotkeys (`Meta+H`)
+5. Set up autostart on login
+
+> Restart your session if shortcuts don't work immediately.
+
+---
+
+## ⌨️ Usage
 
 | Shortcut | Action |
 | :--- | :--- |
-| **Meta + H** | **Start/Stop Recording** (Super+H) |
-| **Meta + Shift + H** | **Toggle Language** (Thai 🇹🇭 / English 🇺🇸) |
-
-*Note: "Meta" is usually the Windows key.*
+| `Meta + H` | **Start / Stop** recording |
+| `Meta + Shift + H` | **Toggle language** (Thai ↔ English) |
 
 ### How it works
-1.  Press **Meta + Shift + H** to select your language (check the notification).
-2.  Place your cursor where you want to type.
-3.  Press **Meta + H** and start speaking.
-4.  The overlay will show **🔴 Listening...**.
-5.  Press **Meta + H** again to stop.
-6.  The overlay will show **🔵 Thinking...** then **🟢 Typing...**.
-7.  The text will appear in your active window!
+
+1. Press `Meta + Shift + H` to pick your language.
+2. Place your cursor where you want to type.
+3. Press `Meta + H` — the overlay shows **🔴 Listening**.
+4. Speak clearly.
+5. Press `Meta + H` again — **🔵 Thinking** → **🟢 Typing**.
+6. Text appears in your active window.
+
+---
 
 ## ⚙️ Configuration
 
-You can customize settings in `config.env`:
+Edit `config.env` to customize:
+
 ```bash
 nano ~/Documents/LinuxVoiceTyping/config.env
 ```
 
-Key settings:
-- `WHISPER_LANG`: Default language on boot (set to "th" for Thai).
-- `WHISPER_THREADS`: CPU threads to use (default 10). Increase for speed if you have more cores.
-- `ARECORD_DEVICE`: Microphone device (Currently: `sysdefault:CARD=Quadcast`).
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `WHISPER_MODEL` | `ggml-medium.bin` | AI model path |
+| `WHISPER_LANG` | `th` | Default language (`th`, `en`, `auto`) |
+| `WHISPER_THREADS` | `16` | CPU threads for inference |
+| `ARECORD_DEVICE` | *(empty)* | ALSA mic override (find with `arecord -L`) |
+| `TYPE_DELAY` | `6` | Typing delay for xdotool fallback |
+| `POPUP_ENABLED` | `true` | Show/hide status overlay |
 
-## 🛠️ Troubleshooting
-
-- **No Sound**: Check your microphone input level in System Settings.
-- **Gibberish Text**: Ensure the target application supports Paste (Ctrl+V).
-- **Popup missing**: Verify `python3-tk` is installed.
+---
 
 ## 📂 Project Structure
 
-- `agent.py`: Main logic controller.
-- `popup.py`: Modern UI overlay.
-- `transcribe.sh`: Transcription logic using `whisper.cpp`.
-- `record.sh`: Audio recording script.
-- `toggle_lang.sh`: Language switching script.
+```
+LinuxVoiceTyping/
+├── agent.py           # Main controller (start/stop toggle)
+├── popup.py           # Minimal UI overlay (tkinter)
+├── transcribe.sh      # Whisper transcription pipeline
+├── record.sh          # Audio capture (arecord)
+├── type.sh            # Text output (clipboard paste)
+├── toggle_lang.sh     # Language switcher
+├── config.env         # User settings
+├── config.env.example # Settings template
+├── install.sh         # One-shot installer
+└── whisper.cpp/       # AI engine (git-ignored)
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+| Problem | Solution |
+| :--- | :--- |
+| No sound recorded | Check mic input in System Settings or `arecord -L` |
+| Text not appearing | Target app may block paste — try a different app |
+| Popup missing | Install `python3-tk`: `sudo apt install python3-tk` |
+| Slow transcription | Increase `WHISPER_THREADS` or verify Vulkan build |
+| Wrong language | Press `Meta+Shift+H` to toggle |
+
+**Logs**: Check `/tmp/agent_debug.log` for diagnostics.
+
+---
+
+## 📄 License
+
+MIT

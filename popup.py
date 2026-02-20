@@ -1,135 +1,160 @@
 import tkinter as tk
 from pathlib import Path
-import time
-import os
+import math
 
 STATUS_FILE = Path("/tmp/voice_agent_status")
 LANG_FILE = Path("/tmp/voice_agent_lang")
 
-class ModernPopup(tk.Tk):
+# ── Color Palette ──
+BG         = "#111111"
+SURFACE    = "#1a1a1a"
+BORDER     = "#2a2a2a"
+TEXT_DIM   = "#555555"
+TEXT_MID   = "#888888"
+
+COLORS = {
+    "recording":    {"dot": "#ff3b30", "text": "#ffffff",  "label": "Listening",  "glow": "#ff3b30"},
+    "transcribing": {"dot": "#0a84ff", "text": "#0a84ff",  "label": "Thinking",   "glow": "#0a84ff"},
+    "typing":       {"dot": "#30d158", "text": "#30d158",  "label": "Typing",     "glow": "#30d158"},
+}
+
+
+class MinimalPopup(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        # ── Window setup ──
         self.overrideredirect(True)
-        self.attributes('-topmost', True)
-        self.config(bg='black')
-        
-        # Transparent background hack (linux) - might not work everywhere but worth a try
-        # self.attributes('-alpha', 0.8) 
+        self.attributes("-topmost", True)
+        self.config(bg=BG)
 
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        
-        width = 320
-        height = 80
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2 # Center
-        # y = screen_height - height - 100 # Bottom
+        # Dimensions
+        self.w = 200
+        self.h = 52
 
-        self.geometry(f"{width}x{height}+{x}+{y}")
+        # Position: left-center of screen
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        x = 32  # 32px from left edge
+        y = (screen_h - self.h) // 2
 
-        # Main Frame with rounded look (simulated with canvas or padding)
-        self.canvas = tk.Canvas(self, width=width, height=height, bg='#1e1e1e', highlightthickness=0)
-        self.canvas.pack(fill='both', expand=True)
+        self.geometry(f"{self.w}x{self.h}+{x}+{y}")
 
-        # Draw rounded rect bg
-        self.round_rect(5, 5, width-5, height-5, radius=20, fill='#2d2d2d', outline='#4a4a4a')
+        # Try transparency
+        try:
+            self.attributes("-alpha", 0.92)
+        except:
+            pass
 
-        # Status Dot
-        self.dot = self.canvas.create_oval(30, 32, 46, 48, fill='#ff4444', outline='')
-        
-        # Text
-        self.label_id = self.canvas.create_text(60, 40, anchor='w', text="Initializing...", fill='white', font=('Helvetica', 14, 'bold'))
-        
-        # Language
-        self.lang_id = self.canvas.create_text(width-30, 40, anchor='e', text="", fill='#aaaaaa', font=('Helvetica', 12))
+        # ── Canvas ──
+        self.canvas = tk.Canvas(
+            self, width=self.w, height=self.h,
+            bg=BG, highlightthickness=0, bd=0
+        )
+        self.canvas.pack(fill="both", expand=True)
 
-        self.pulsing = False
-        self.pulse_step = 0
-        self.update_status()
+        # Rounded background
+        self._rounded_rect(2, 2, self.w - 2, self.h - 2, r=16, fill=SURFACE, outline=BORDER)
 
-    def round_rect(self, x1, y1, x2, y2, radius=25, **kwargs):
-        points = [x1+radius, y1,
-                  x2-radius, y1,
-                  x2, y1,
-                  x2, y1+radius,
-                  x2, y2-radius,
-                  x2, y2,
-                  x2-radius, y2,
-                  x1+radius, y2,
-                  x1, y2,
-                  x1, y2-radius,
-                  x1, y1+radius,
-                  x1, y1]
-        return self.canvas.create_polygon(points, **kwargs, smooth=True)
+        # Status indicator dot
+        dot_cx, dot_cy = 24, self.h // 2
+        self.dot = self.canvas.create_oval(
+            dot_cx - 5, dot_cy - 5, dot_cx + 5, dot_cy + 5,
+            fill=TEXT_DIM, outline=""
+        )
 
-    def update_status(self):
-        # Read status
-        status = "Waiting..."
-        color = "#888888"
-        dot_color = "#444444"
-        self.pulsing = False
+        # Glow ring (outer dim circle for pulse effect)
+        self.glow = self.canvas.create_oval(
+            dot_cx - 9, dot_cy - 9, dot_cx + 9, dot_cy + 9,
+            fill="", outline=TEXT_DIM, width=1
+        )
 
+        # Status label
+        self.label = self.canvas.create_text(
+            42, self.h // 2, anchor="w",
+            text="…", fill=TEXT_DIM,
+            font=("Helvetica Neue", 13)
+        )
+
+        # Language badge (right side)
+        self.lang_label = self.canvas.create_text(
+            self.w - 16, self.h // 2, anchor="e",
+            text="", fill=TEXT_MID,
+            font=("Helvetica Neue", 10)
+        )
+
+        # Animation state
+        self.tick = 0.0
+        self._update()
+
+    def _rounded_rect(self, x1, y1, x2, y2, r=20, **kwargs):
+        points = [
+            x1 + r, y1,
+            x2 - r, y1,
+            x2, y1, x2, y1 + r,
+            x2, y2 - r,
+            x2, y2, x2 - r, y2,
+            x1 + r, y2,
+            x1, y2, x1, y2 - r,
+            x1, y1 + r,
+            x1, y1,
+        ]
+        self.canvas.create_polygon(points, smooth=True, **kwargs)
+
+    def _dim(self, hex_color, factor):
+        """Dim a hex color by factor (0-1)."""
+        if not hex_color.startswith("#") or len(hex_color) != 7:
+            return hex_color
+        r = int(int(hex_color[1:3], 16) * factor)
+        g = int(int(hex_color[3:5], 16) * factor)
+        b = int(int(hex_color[5:7], 16) * factor)
+        return f"#{min(r,255):02x}{min(g,255):02x}{min(b,255):02x}"
+
+    def _update(self):
+        # ── Read status ──
+        status_key = None
         if STATUS_FILE.exists():
             try:
-                status_text = STATUS_FILE.read_text().strip()
-                if status_text == "recording":
-                    status = "Listening..."
-                    color = "white"
-                    dot_color = "#ff4444" # Red
-                    self.pulsing = True
-                elif status_text == "transcribing":
-                    status = "Thinking..."
-                    color = "#00ddee" # Cyan
-                    dot_color = "#00ddee"
-                    self.pulsing = True
-                elif status_text == "typing":
-                    status = "Typing..."
-                    color = "#00ff88" # Green
-                    dot_color = "#00ff88"
+                status_key = STATUS_FILE.read_text().strip()
             except:
                 pass
-        
-        # Read Language
-        lang = ""
+
+        cfg = COLORS.get(status_key)
+
+        if cfg:
+            self.canvas.itemconfig(self.label, text=cfg["label"], fill=cfg["text"])
+
+            # Pulse animation
+            self.tick += 0.12
+            pulse = (math.sin(self.tick) + 1) / 2  # 0..1
+
+            dot_color = cfg["dot"]
+            dimmed = self._dim(dot_color, 0.3 + 0.7 * pulse)
+            glow_dim = self._dim(cfg["glow"], 0.15 + 0.25 * pulse)
+
+            self.canvas.itemconfig(self.dot, fill=dimmed)
+            self.canvas.itemconfig(self.glow, outline=glow_dim, width=1)
+        else:
+            self.canvas.itemconfig(self.label, text="…", fill=TEXT_DIM)
+            self.canvas.itemconfig(self.dot, fill=TEXT_DIM)
+            self.canvas.itemconfig(self.glow, outline=BG)
+
+        # ── Read language ──
+        lang_text = ""
         if LANG_FILE.exists():
             try:
                 l = LANG_FILE.read_text().strip()
-                if l == "th": lang = "🇹🇭 TH"
-                elif l == "en": lang = "🇺🇸 EN"
+                if l == "th":
+                    lang_text = "TH"
+                elif l == "en":
+                    lang_text = "EN"
             except:
                 pass
+        self.canvas.itemconfig(self.lang_label, text=lang_text)
 
-        self.canvas.itemconfig(self.label_id, text=status, fill=color)
-        self.canvas.itemconfig(self.lang_id, text=lang)
-        
-        # Animation
-        if self.pulsing:
-            self.pulse_step += 0.2
-            import math
-            opacity = (math.sin(self.pulse_step) + 1) / 2 # 0 to 1
-            # Interpolate color helper? Tkinter colors are hex.
-            # Simple toggle for now or constant glow
-            if self.pulse_step % 2 > 1:
-                self.canvas.itemconfig(self.dot, fill=dot_color)
-            else:
-                 # Dimmer
-                self.canvas.itemconfig(self.dot, fill=self.adjust_color_brightness(dot_color, 0.5))
-        else:
-            self.canvas.itemconfig(self.dot, fill=dot_color)
+        self.after(80, self._update)
 
-        self.after(100, self.update_status)
-
-    def adjust_color_brightness(self, hex_color, factor):
-        # Very basic hex dimmer
-        if not hex_color.startswith('#') or len(hex_color) != 7: return hex_color
-        r = int(hex_color[1:3], 16)
-        g = int(hex_color[3:5], 16)
-        b = int(hex_color[5:7], 16)
-        r = int(r * factor)
-        g = int(g * factor)
-        b = int(b * factor)
-        return f"#{r:02x}{g:02x}{b:02x}"
 
 if __name__ == "__main__":
-    app = ModernPopup()
+    app = MinimalPopup()
     app.mainloop()

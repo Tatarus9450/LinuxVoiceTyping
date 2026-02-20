@@ -134,7 +134,8 @@ def stop_recording_and_type():
     # 5. Type
     subprocess.run([str(BASE / "type.sh"), txt_path], check=False)
     
-    # 6. Cleanup
+    # 6. Keep "Typing..." visible briefly, then cleanup
+    time.sleep(1.0)
     kill_popup()
 
 def main():
