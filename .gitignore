@@ -1,14 +1,15 @@
-# Dependencies and Build Artifacts
+# ── Whisper.cpp (cloned by install.sh) ──
 whisper.cpp/
+
+# ── Python cache ──
 __pycache__/
 *.pyc
+*.pyo
 
-# Configuration (contains local paths/devices)
+# ── Local config (has machine-specific paths) ──
 config.env
 
-# Temporary Runtime Files
+# ── Runtime temp files ──
 *.wav
-*.txt
-*.pid
 *.log
-/tmp/voice_agent*
+*.pid
