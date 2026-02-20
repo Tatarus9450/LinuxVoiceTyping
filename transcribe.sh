@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "/home/task/Documents/LinuxVoiceTyping/config.env"
+
+SCRIPT_DIR="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
+source "$SCRIPT_DIR/config.env"
+
+# Add whisper.cpp shared library paths so dynamic linker can find them (including Vulkan)
+export LD_LIBRARY_PATH="$SCRIPT_DIR/whisper.cpp/build/src:$SCRIPT_DIR/whisper.cpp/build/ggml/src:$SCRIPT_DIR/whisper.cpp/build/ggml/src/ggml-vulkan${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 WAV="${1:-$AUDIO_WAV}"
 OUT_TXT="/tmp/voice_agent.txt"
@@ -12,7 +17,6 @@ rm -f "$OUT_TXT"
 # -l : language
 # -m : model
 # -f : input file
-# Note: Path adjusted to build/bin/whisper-cli based on recent whisper.cpp build structure
 # Fix WAV header if corrupt (copying valid audio to new file)
 ffmpeg -y -hide_banner -loglevel error -i "$WAV" -c copy "${WAV}_fixed.wav"
 FIXED_WAV="${WAV}_fixed.wav"
@@ -32,14 +36,13 @@ else
   LANG_ARG="-l $WHISPER_LANG"
 fi
 
-
-timeout 60s "/home/task/Documents/LinuxVoiceTyping/whisper.cpp/build/bin/whisper-cli" \
+timeout 60s "$SCRIPT_DIR/whisper.cpp/build/bin/whisper-cli" \
   -t "$WHISPER_THREADS" \
   -m "$WHISPER_MODEL" \
   $LANG_ARG \
   -f "$FIXED_WAV" \
   -nt \
-  > "$OUT_TXT" || { echo "Transcription timed out"; exit 1; }
+  > "$OUT_TXT" || { echo "Transcription timed out or failed"; exit 1; }
 
 # Normalize: remove excessive newlines
 python3 - <<'PY'

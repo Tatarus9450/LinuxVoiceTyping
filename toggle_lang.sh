@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Toggle language between Thai and English
+# Triggered by: Meta + Shift + H
+
 LANG_FILE="/tmp/voice_agent_lang"
 
 if [ ! -f "$LANG_FILE" ]; then

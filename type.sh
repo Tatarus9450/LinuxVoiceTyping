@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "/home/task/Documents/LinuxVoiceTyping/config.env"
+
+SCRIPT_DIR="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
+source "$SCRIPT_DIR/config.env"
 
 TXT_FILE="${1:-/tmp/voice_agent.txt}"
 TEXT="$(cat "$TXT_FILE" 2>/dev/null || true)"
@@ -11,13 +13,12 @@ if [[ -z "$TEXT" ]]; then
 fi
 
 # Prioritize clipboard paste to avoid keyboard layout mapping issues (especially for Thai)
-# Save current clipboard (optional, skipping for speed/simplicity)
 printf "%s" "$TEXT" | xclip -selection clipboard
 
-# Ctrl+V paste
+# Primary: Ctrl+V paste (works with Thai and Unicode correctly)
 if xdotool key --clearmodifiers ctrl+v; then
   exit 0
 fi
 
-# Fallback: xdotool type
+# Fallback: xdotool type (may not work well with Thai)
 xdotool type --delay "$TYPE_DELAY" -- "$TEXT" 2>/dev/null
