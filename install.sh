@@ -54,6 +54,47 @@ replace_managed_block() {
     printf '\n%s\n%s\n%s\n' "$begin" "$content" "$end" >> "$tmp"
     mv "$tmp" "$file"
 }
+strip_legacy_xbindkeys_entries() {
+    local file="$1"
+    local agent_command="$2"
+    local toggle_command="$3"
+
+    [ -f "$file" ] || return 0
+
+    python3 - "$file" "$agent_command" "$toggle_command" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+agent_command = sys.argv[2]
+toggle_command = sys.argv[3]
+
+text = path.read_text(encoding="utf-8", errors="ignore")
+blocks = [
+    (
+        "# Voice Agent Shortcut\n"
+        f"\"{agent_command}\"\n"
+        "  m:0x50 + c:43\n"
+        "  Mod4+h\n"
+    ),
+    (
+        "# Voice Agent Language Toggle\n"
+        f"\"{toggle_command}\"\n"
+        "  m:0x50 + c:43 + Shift\n"
+        "  Mod4+Shift+h\n"
+    ),
+]
+
+for block in blocks:
+    text = text.replace(block + "\n", "")
+    text = text.replace(block, "")
+
+while "\n\n\n" in text:
+    text = text.replace("\n\n\n", "\n\n")
+
+path.write_text(text.rstrip() + "\n", encoding="utf-8")
+PY
+}
 version_at_least() {
     local current="$1"
     local minimum="$2"
@@ -117,6 +158,7 @@ PACKAGES=(
     xdotool xclip                      # Text injection
     alsa-utils                         # arecord
     libnotify-bin                      # notify-send
+    procps psmisc                      # pgrep/pkill/killall
     python3-tk                         # Popup UI
     python3-venv python3-pip           # Isolated Python env
     xbindkeys                          # Global hotkeys
@@ -125,7 +167,7 @@ PACKAGES=(
 sudo apt update -qq
 sudo apt install -y "${PACKAGES[@]}" -qq
 
-for cmd in ffmpeg arecord xclip xdotool notify-send xbindkeys python3; do
+for cmd in ffmpeg sox arecord aplay xclip xdotool notify-send xbindkeys python3 pgrep pkill killall; do
     need_cmd "$cmd"
 done
 ok "All packages installed"
@@ -143,6 +185,14 @@ fi
 
 mkdir -p "$SCRIPT_DIR/.cache" "$HF_HOME_DIR"
 ok "Created cache directories"
+
+if [ ! -f "$SCRIPT_DIR/notification.wav" ]; then
+    sox -n -r 16000 -c 1 "$SCRIPT_DIR/notification.wav" \
+        synth 0.14 sine 880 fade q 0.005 0.14 0.05 gain -12
+    ok "Created notification.wav"
+else
+    skip "notification.wav exists"
+fi
 
 # Auto-detect microphone
 if grep -q 'ARECORD_DEVICE=""' "$SCRIPT_DIR/config.env"; then
@@ -257,6 +307,7 @@ read -r -d '' XB_BLOCK <<EOF || true
 "$SCRIPT_DIR/toggle_lang.sh"
   Mod4+Shift+h
 EOF
+strip_legacy_xbindkeys_entries "$XB_FILE" "python3 $SCRIPT_DIR/agent.py" "$SCRIPT_DIR/toggle_lang.sh"
 replace_managed_block "$XB_FILE" "$XB_BEGIN" "$XB_END" "$XB_BLOCK"
 ok "Updated ~/.xbindkeysrc"
 

@@ -1,9 +1,13 @@
 import tkinter as tk
-from pathlib import Path
 import math
+import shutil
+import subprocess
+from pathlib import Path
 
+BASE = Path(__file__).parent.resolve()
 STATUS_FILE = Path("/tmp/voice_agent_status")
 PROFILE_FILE = Path("/tmp/voice_agent_profile")
+NOTIFICATION_SOUND = BASE / "notification.wav"
 
 # ── Color Palette ──
 BG         = "#111111"
@@ -85,6 +89,7 @@ class MinimalPopup(tk.Tk):
 
         # Animation state
         self.tick = 0.0
+        self.last_status = None
         self._update()
 
     def _rounded_rect(self, x1, y1, x2, y2, r=20, **kwargs):
@@ -110,6 +115,21 @@ class MinimalPopup(tk.Tk):
         b = int(int(hex_color[5:7], 16) * factor)
         return f"#{min(r,255):02x}{min(g,255):02x}{min(b,255):02x}"
 
+    def _play_typing_sound(self):
+        if not NOTIFICATION_SOUND.exists():
+            return
+
+        player = shutil.which("aplay")
+        if not player:
+            return
+
+        subprocess.Popen(
+            [player, "-q", str(NOTIFICATION_SOUND)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
     def _update(self):
         # ── Read status ──
         status_key = None
@@ -118,6 +138,9 @@ class MinimalPopup(tk.Tk):
                 status_key = STATUS_FILE.read_text().strip()
             except:
                 pass
+
+        if status_key == "typing" and self.last_status != "typing":
+            self._play_typing_sound()
 
         cfg = COLORS.get(status_key)
 
@@ -152,6 +175,7 @@ class MinimalPopup(tk.Tk):
                 pass
         self.canvas.itemconfig(self.lang_label, text=profile_text)
 
+        self.last_status = status_key
         self.after(80, self._update)
 
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import fcntl
 import os
 import signal
 import subprocess
@@ -13,6 +14,9 @@ PID_FILE = Path("/tmp/voice_agent_arecord.pid")
 POPUP_PID_FILE = Path("/tmp/voice_agent_popup.pid")
 WAV_FILE = Path("/tmp/voice_agent.wav")
 STATUS_FILE = Path("/tmp/voice_agent_status")
+TRIGGER_LOCK_FILE = Path("/tmp/voice_agent_trigger.lock")
+LAST_TRIGGER_FILE = Path("/tmp/voice_agent_last_trigger")
+TRIGGER_DEBOUNCE_SECONDS = 0.35
 
 def log(msg):
     with open("/tmp/agent_debug.log", "a") as f:
@@ -24,6 +28,25 @@ def notify(msg: str):
 
 def set_status(status: str):
     STATUS_FILE.write_text(status)
+
+
+def is_duplicate_trigger() -> bool:
+    now = time.time()
+    with TRIGGER_LOCK_FILE.open("a+", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+
+        last_trigger = 0.0
+        if LAST_TRIGGER_FILE.exists():
+            try:
+                last_trigger = float(LAST_TRIGGER_FILE.read_text().strip())
+            except Exception:
+                last_trigger = 0.0
+
+        if now - last_trigger < TRIGGER_DEBOUNCE_SECONDS:
+            return True
+
+        LAST_TRIGGER_FILE.write_text(f"{now:.6f}", encoding="utf-8")
+        return False
 
 def kill_popup():
     if POPUP_PID_FILE.exists():
@@ -148,6 +171,10 @@ def stop_recording_and_type():
     kill_popup()
 
 def main():
+    if is_duplicate_trigger():
+        log("Ignored duplicate trigger")
+        return
+
     log("Agent triggered")
     if not is_recording():
         start_recording()
