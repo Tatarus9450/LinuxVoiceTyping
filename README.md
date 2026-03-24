@@ -35,7 +35,9 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The installer will:
+`install.sh` works as both an installer and a repair script. Re-running it will verify the local setup, repair the Typhoon worker state, refresh dependencies, and restore hotkeys/autostart if needed.
+
+The install / repair flow will:
 1. Install all system dependencies
 2. Create a project-local Python virtualenv
 3. Install PyTorch + Typhoon ASR into `.venv`
@@ -105,7 +107,7 @@ LinuxVoiceTyping/
 ├── typhoon_replacements.tsv # Optional smart-mode replacements
 ├── config.env         # User settings
 ├── config.env.example # Settings template
-├── install.sh         # One-shot installer
+├── install.sh         # Install / repair script
 └── .cache/            # Git-ignored model/cache directory
 ```
 
@@ -118,7 +120,7 @@ LinuxVoiceTyping/
 | No sound recorded | Check mic input in System Settings or `arecord -L` |
 | Text not appearing | Target app may block paste — try a different app |
 | Popup missing | Install `python3-tk`: `sudo apt install python3-tk` |
-| Installer downloaded a lot of files | Typhoon/NVIDIA NeMo dependencies are large; this is expected on the first install |
+| Install / repair downloaded a lot of files | Typhoon/NVIDIA NeMo dependencies are large; this is expected on the first install or after dependency refresh |
 | Slow first transcription | The worker may still be downloading or warming the model; wait for the first run to finish |
 | Mixed Thai-English terms look wrong | Add overrides in `typhoon_replacements.tsv` and stay in `Smart Mix` mode |
 | Smart mode changes text too much | Press `Meta+Shift+H` to switch to `Raw` |

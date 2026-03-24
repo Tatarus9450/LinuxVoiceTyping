@@ -63,7 +63,7 @@ version_at_least() {
 # ── Header ──
 echo ""
 echo -e "${G}╔══════════════════════════════════════════╗${NC}"
-echo -e "${G}║   Linux Voice Typing — Auto Installer    ║${NC}"
+echo -e "${G}║ Linux Voice Typing — Install / Repair    ║${NC}"
 echo -e "${G}╚══════════════════════════════════════════╝${NC}"
 echo -e "  Project: ${Y}$SCRIPT_DIR${NC}"
 echo ""
@@ -192,7 +192,7 @@ else
     skip "Python virtual environment exists"
 fi
 
-"$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel >/dev/null
+"$VENV_DIR/bin/python" -m pip install --upgrade pip wheel 'setuptools>=79,<82' >/dev/null
 ok "Upgraded pip tooling"
 
 # ── 5. Install Typhoon ASR ──
@@ -201,7 +201,9 @@ step 5 "Installing Python dependencies..."
 if [[ "$TORCH_CHANNEL" == "cuda" ]]; then
     "$VENV_DIR/bin/pip" install --upgrade torch==2.11.0 torchaudio==2.11.0
 else
-    "$VENV_DIR/bin/pip" install --upgrade --index-url https://download.pytorch.org/whl/cpu \
+    "$VENV_DIR/bin/pip" install --upgrade \
+        --index-url https://download.pytorch.org/whl/cpu \
+        --extra-index-url https://pypi.org/simple \
         torch==2.11.0 torchaudio==2.11.0
 fi
 "$VENV_DIR/bin/pip" install --upgrade typhoon-asr==0.1.1
@@ -210,6 +212,7 @@ ok "Installed Typhoon ASR dependencies"
 # ── 6. Download Model ──
 step 6 "Downloading and warming the Typhoon model..."
 
+python3 "$SCRIPT_DIR/typhoon_client.py" --stop-service >/dev/null 2>&1 || true
 "$VENV_DIR/bin/python" "$SCRIPT_DIR/typhoon_service.py" --preload-only
 ok "Typhoon model cached and warmed"
 
@@ -223,7 +226,7 @@ for name in modules:
     importlib.import_module(name)
 print("ok")
 PY
-python3 "$SCRIPT_DIR/typhoon_client.py" --ensure-service
+"$VENV_DIR/bin/python" "$SCRIPT_DIR/typhoon_client.py" --ensure-service
 ok "Typhoon service responds correctly"
 
 # ── 8. Permissions ──
@@ -278,12 +281,12 @@ else
     warn "Could not start xbindkeys (will work after relogin)"
 fi
 
-python3 "$SCRIPT_DIR/typhoon_client.py" --ensure-service --no-wait || true
+"$VENV_DIR/bin/python" "$SCRIPT_DIR/typhoon_client.py" --ensure-service --no-wait || true
 
 # ── Done ──
 echo ""
 echo -e "${G}╔══════════════════════════════════════════╗${NC}"
-echo -e "${G}║         Installation Complete! 🎉        ║${NC}"
+echo -e "${G}║      Install / Repair Complete! 🎉       ║${NC}"
 echo -e "${G}╚══════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${Y}Meta + H${NC}           Start / Stop Recording"

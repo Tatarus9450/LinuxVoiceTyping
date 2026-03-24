@@ -22,6 +22,7 @@ TORCH = None
 NEMO_ASR = None
 DEVICE = "cpu"
 MODEL_LOCK = threading.Lock()
+OWNS_SOCKET = False
 
 
 def log(message: str) -> None:
@@ -273,7 +274,8 @@ class TyphoonServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
 
 
 def cleanup() -> None:
-    SOCKET_FILE.unlink(missing_ok=True)
+    if OWNS_SOCKET:
+        SOCKET_FILE.unlink(missing_ok=True)
     try:
         current_pid = SERVICE_PID_FILE.read_text(encoding="utf-8").strip()
     except Exception:
@@ -287,6 +289,8 @@ def handle_signal(_signum, _frame) -> None:
 
 
 def main() -> int:
+    global OWNS_SOCKET
+
     parser = argparse.ArgumentParser(description="Persistent Typhoon ASR worker")
     parser.add_argument(
         "--preload-only",
@@ -306,6 +310,7 @@ def main() -> int:
 
     SOCKET_FILE.unlink(missing_ok=True)
     SERVICE_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
+    OWNS_SOCKET = True
 
     log(f"Typhoon service ready on {SOCKET_FILE}")
     with TyphoonServer(str(SOCKET_FILE), TyphoonHandler) as server:

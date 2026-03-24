@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from typhoon_backend import ensure_service, get_active_profile, transcribe_audio
+from typhoon_backend import ensure_service, stop_service, transcribe_audio
 
 
 def main() -> int:
@@ -16,6 +16,11 @@ def main() -> int:
         "--ensure-service",
         action="store_true",
         help="Start the Typhoon worker and exit",
+    )
+    parser.add_argument(
+        "--stop-service",
+        action="store_true",
+        help="Stop the Typhoon worker and exit",
     )
     parser.add_argument(
         "--no-wait",
@@ -30,6 +35,10 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        if args.stop_service and not args.audio_file:
+            stop_service()
+            return 0
+
         if args.ensure_service and not args.audio_file:
             ensure_service(wait=not args.no_wait)
             return 0

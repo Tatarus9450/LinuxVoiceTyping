@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import signal
 import socket
 import subprocess
 import time
@@ -164,24 +165,12 @@ def _wait_for_service(timeout: float) -> bool:
     return ping_service(timeout=0.5)
 
 
-def ensure_service(wait: bool = True, timeout: float | None = None) -> bool:
-    config = load_config()
-    timeout = timeout if timeout is not None else float(config["TYPHOON_STARTUP_TIMEOUT"])
-
-    if ping_service(timeout=0.5):
-        return True
-
-    pid = _read_pid()
-    if _pid_alive(pid):
-        if not wait:
-            return False
-        if _wait_for_service(timeout):
-            return True
-        raise RuntimeError(f"Typhoon service did not become ready. Check {SERVICE_LOG_FILE}.")
-
+def _clear_service_state() -> None:
     SOCKET_FILE.unlink(missing_ok=True)
     SERVICE_PID_FILE.unlink(missing_ok=True)
 
+
+def _spawn_service(config: dict[str, str]) -> None:
     python_bin = get_service_python(config)
     if not python_bin.exists():
         raise FileNotFoundError(
@@ -198,12 +187,61 @@ def ensure_service(wait: bool = True, timeout: float | None = None) -> bool:
         )
     SERVICE_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
 
+
+def stop_service(timeout: float = 5.0) -> bool:
+    pid = _read_pid()
+    was_running = _pid_alive(pid)
+
+    if was_running and pid is not None:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            was_running = False
+
+        deadline = time.time() + timeout
+        while time.time() < deadline and _pid_alive(pid):
+            time.sleep(0.1)
+
+        if _pid_alive(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+            deadline = time.time() + 2.0
+            while time.time() < deadline and _pid_alive(pid):
+                time.sleep(0.1)
+
+    _clear_service_state()
+    return was_running
+
+
+def ensure_service(wait: bool = True, timeout: float | None = None) -> bool:
+    config = load_config()
+    timeout = timeout if timeout is not None else float(config["TYPHOON_STARTUP_TIMEOUT"])
+
+    if ping_service(timeout=0.5):
+        return True
+
+    pid = _read_pid()
+    if _pid_alive(pid):
+        if not wait:
+            return False
+        if _wait_for_service(timeout):
+            return True
+        stop_service(timeout=5.0)
+    else:
+        _clear_service_state()
+
+    _spawn_service(config)
+
     if not wait:
         return False
 
     if _wait_for_service(timeout):
         return True
 
+    stop_service(timeout=2.0)
     raise RuntimeError(f"Typhoon service failed to start. Check {SERVICE_LOG_FILE}.")
 
 
