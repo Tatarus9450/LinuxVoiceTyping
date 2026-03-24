@@ -1,15 +1,22 @@
-# ── Whisper.cpp (cloned by install.sh) ──
-whisper.cpp/
-
 # ── Python cache ──
 __pycache__/
 *.pyc
 *.pyo
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 
-# ── Local config (has machine-specific paths) ──
+# ── Local config / state ──
 config.env
+.cache/
+.state/
 
 # ── Runtime temp files ──
 *.wav
 *.log
 *.pid
+.coverage
+coverage/
+htmlcov/

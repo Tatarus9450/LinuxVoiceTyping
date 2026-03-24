@@ -3,7 +3,7 @@ from pathlib import Path
 import math
 
 STATUS_FILE = Path("/tmp/voice_agent_status")
-LANG_FILE = Path("/tmp/voice_agent_lang")
+PROFILE_FILE = Path("/tmp/voice_agent_profile")
 
 # ── Color Palette ──
 BG         = "#111111"
@@ -139,18 +139,18 @@ class MinimalPopup(tk.Tk):
             self.canvas.itemconfig(self.dot, fill=TEXT_DIM)
             self.canvas.itemconfig(self.glow, outline=BG)
 
-        # ── Read language ──
-        lang_text = ""
-        if LANG_FILE.exists():
+        # ── Read dictation profile ──
+        profile_text = ""
+        if PROFILE_FILE.exists():
             try:
-                l = LANG_FILE.read_text().strip()
-                if l == "th":
-                    lang_text = "TH"
-                elif l == "en":
-                    lang_text = "EN"
+                profile = PROFILE_FILE.read_text().strip().lower()
+                if profile == "raw":
+                    profile_text = "RAW"
+                else:
+                    profile_text = "MIX"
             except:
                 pass
-        self.canvas.itemconfig(self.lang_label, text=lang_text)
+        self.canvas.itemconfig(self.lang_label, text=profile_text)
 
         self.after(80, self._update)
 

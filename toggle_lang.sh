@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Toggle language between Thai and English
+# Toggle dictation profile between smart mixed mode and raw output
 # Triggered by: Meta + Shift + H
 
-LANG_FILE="/tmp/voice_agent_lang"
+PROFILE_FILE="/tmp/voice_agent_profile"
 
-if [ ! -f "$LANG_FILE" ]; then
-    echo "th" > "$LANG_FILE"
+if [ ! -f "$PROFILE_FILE" ]; then
+    echo "smart" > "$PROFILE_FILE"
 fi
 
-CURRENT=$(cat "$LANG_FILE")
+CURRENT=$(tr -d '[:space:]' < "$PROFILE_FILE")
 
-if [ "$CURRENT" == "th" ]; then
-    echo "en" > "$LANG_FILE"
-    notify-send "Voice Agent" "Switched to English 🇺🇸"
+if [ "$CURRENT" == "smart" ]; then
+    echo "raw" > "$PROFILE_FILE"
+    notify-send "Voice Agent" "Dictation mode: Raw"
 else
-    echo "th" > "$LANG_FILE"
-    notify-send "Voice Agent" "Switched to Thai 🇹🇭"
+    echo "smart" > "$PROFILE_FILE"
+    notify-send "Voice Agent" "Dictation mode: Smart Mix"
 fi

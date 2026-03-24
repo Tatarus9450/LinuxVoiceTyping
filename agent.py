@@ -5,6 +5,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from typhoon_backend import config_bool, ensure_service, load_config
+
 HOME = Path.home()
 BASE = Path(__file__).parent.resolve()
 PID_FILE = Path("/tmp/voice_agent_arecord.pid")
@@ -40,6 +42,8 @@ def is_recording() -> bool:
     return PID_FILE.exists()
 
 def start_recording():
+    config = load_config()
+
     # Remove old wav
     try:
         WAV_FILE.unlink(missing_ok=True)
@@ -52,31 +56,36 @@ def start_recording():
         f"""
         set -e
         source "{BASE}/config.env"
+        ARECORD_FORMAT="${{ARECORD_FORMAT:-S16_LE}}"
+        ARECORD_CHANNELS="${{ARECORD_CHANNELS:-1}}"
+        ARECORD_RATE="${{ARECORD_RATE:-16000}}"
         if [[ -n "$ARECORD_DEVICE" ]]; then
-          arecord -D "$ARECORD_DEVICE" -f cd -t wav "{WAV_FILE}" &
+          arecord -D "$ARECORD_DEVICE" -f "$ARECORD_FORMAT" -c "$ARECORD_CHANNELS" -r "$ARECORD_RATE" -t wav "{WAV_FILE}" &
         else
-          arecord -f cd -t wav "{WAV_FILE}" &
+          arecord -f "$ARECORD_FORMAT" -c "$ARECORD_CHANNELS" -r "$ARECORD_RATE" -t wav "{WAV_FILE}" &
         fi
         echo $! > "{PID_FILE}"
         """
     ]
     subprocess.run(cmd, check=True)
 
-    # Start Popup (Modern UI) and set status
     set_status("recording")
-    
-    # We use Popen to keep it running independently
-    popup_proc = subprocess.Popen(
-        ["python3", str(BASE / "popup.py")],
-        cwd=str(BASE),
-        start_new_session=True,
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL
-    )
-    POPUP_PID_FILE.write_text(str(popup_proc.pid))
-    
-    # Log
-    log("Started recording and popup")
+
+    if config_bool(config, "POPUP_ENABLED", True):
+        popup_proc = subprocess.Popen(
+            ["python3", str(BASE / "popup.py")],
+            cwd=str(BASE),
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        POPUP_PID_FILE.write_text(str(popup_proc.pid))
+
+    try:
+        ensure_service(wait=False)
+        log("Started recording and requested Typhoon warm-up")
+    except Exception as exc:
+        log(f"Typhoon warm-up failed: {exc}")
 
 
 def stop_recording_and_type():

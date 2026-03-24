@@ -1,0 +1,7 @@
+# Optional Typhoon replacement rules for smart dictation mode.
+# Format:
+# source<TAB>target
+#
+# Examples:
+# Chat จีพีที	ChatGPT
+# ลินุกซ์	Linux
