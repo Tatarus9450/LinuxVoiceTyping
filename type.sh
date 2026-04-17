@@ -9,6 +9,7 @@ TEXT="$(cat "$TXT_FILE" 2>/dev/null || true)"
 PREVIOUS_CLIPBOARD_FILE=""
 KLIPPER_STATE_FILE=""
 RESTORE_DELAY="${CLIPBOARD_RESTORE_DELAY:-0.15}"
+SESSION_TYPE="$(printf '%s' "${XDG_SESSION_TYPE:-x11}" | tr '[:upper:]' '[:lower:]')"
 
 if [[ -z "$TEXT" ]]; then
   notify-send "Voice Agent" "No text recognized."
@@ -26,6 +27,35 @@ cleanup_previous_clipboard_file() {
 
 has_klipper() {
   command -v qdbus >/dev/null 2>&1 && qdbus org.kde.klipper /klipper >/dev/null 2>&1
+}
+
+use_wayland_clipboard() {
+  [[ "$SESSION_TYPE" == "wayland" ]] && command -v wl-copy >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1
+}
+
+read_clipboard_to_file() {
+  local target="$1"
+  if use_wayland_clipboard; then
+    wl-paste --no-newline >"$target" 2>/dev/null
+  else
+    xclip -selection clipboard -o >"$target" 2>/dev/null
+  fi
+}
+
+write_clipboard() {
+  if use_wayland_clipboard; then
+    wl-copy --type text/plain;charset=utf-8
+  else
+    xclip -selection clipboard
+  fi
+}
+
+clear_clipboard() {
+  if use_wayland_clipboard; then
+    printf '' | wl-copy 2>/dev/null || true
+  else
+    printf '' | xclip -selection clipboard 2>/dev/null || true
+  fi
 }
 
 snapshot_clipboard() {
@@ -54,18 +84,14 @@ for index in range(200):
         break
     history.append(item[:-1] if item.endswith("\n") else item)
 
-state = {
-    "history": history,
-}
-
 with open(state_path, "w", encoding="utf-8") as handle:
-    json.dump(state, handle, ensure_ascii=False)
+    json.dump({"history": history}, handle, ensure_ascii=False)
 PY
     return
   fi
 
   PREVIOUS_CLIPBOARD_FILE="$(mktemp)"
-  if ! xclip -selection clipboard -o >"$PREVIOUS_CLIPBOARD_FILE" 2>/dev/null; then
+  if ! read_clipboard_to_file "$PREVIOUS_CLIPBOARD_FILE"; then
     rm -f "$PREVIOUS_CLIPBOARD_FILE"
     PREVIOUS_CLIPBOARD_FILE=""
   fi
@@ -102,45 +128,86 @@ if history:
             stderr=subprocess.DEVNULL,
             check=False,
         )
-else:
-    subprocess.run(
-        ["xclip", "-selection", "clipboard"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
 PY
     cleanup_previous_clipboard_file
     return
   fi
 
   if [[ -n "$PREVIOUS_CLIPBOARD_FILE" && -f "$PREVIOUS_CLIPBOARD_FILE" ]]; then
-    xclip -selection clipboard <"$PREVIOUS_CLIPBOARD_FILE" 2>/dev/null || true
+    if use_wayland_clipboard; then
+      wl-copy <"$PREVIOUS_CLIPBOARD_FILE" 2>/dev/null || true
+    else
+      xclip -selection clipboard <"$PREVIOUS_CLIPBOARD_FILE" 2>/dev/null || true
+    fi
     cleanup_previous_clipboard_file
     return
   fi
 
-  if has_klipper; then
-    xclip -selection clipboard </dev/null 2>/dev/null || true
-  else
-    printf '' | xclip -selection clipboard 2>/dev/null || true
+  clear_clipboard
+}
+
+ensure_ydotoold() {
+  if ! command -v ydotool >/dev/null 2>&1 || ! command -v ydotoold >/dev/null 2>&1; then
+    return 1
   fi
+
+  if pgrep -u "$USER" -x ydotoold >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user start ydotool.service >/dev/null 2>&1 || true
+    systemctl --user start ydotoold.service >/dev/null 2>&1 || true
+  fi
+
+  if ! pgrep -u "$USER" -x ydotoold >/dev/null 2>&1; then
+    (ydotoold >/dev/null 2>&1 &)
+    sleep 0.5
+  fi
+
+  pgrep -u "$USER" -x ydotoold >/dev/null 2>&1
+}
+
+paste_via_wayland() {
+  if command -v wtype >/dev/null 2>&1; then
+    wtype -M ctrl -k v -m ctrl >/dev/null 2>&1 && return 0
+  fi
+
+  if ensure_ydotoold; then
+    # KEY_LEFTCTRL=29, KEY_V=47 from linux/input-event-codes.h
+    ydotool key 29:1 47:1 47:0 29:0 >/dev/null 2>&1 && return 0
+  fi
+
+  return 1
+}
+
+notify_manual_paste() {
+  notify-send "Voice Agent" "Copied text to clipboard. Paste manually."
 }
 
 trap cleanup_previous_clipboard_file EXIT
 
 snapshot_clipboard
+printf "%s" "$TEXT" | write_clipboard
 
-# Prioritize clipboard paste to avoid keyboard layout mapping issues (especially for Thai)
-printf "%s" "$TEXT" | xclip -selection clipboard
+if use_wayland_clipboard; then
+  if paste_via_wayland; then
+    restore_clipboard
+    exit 0
+  fi
 
-# Primary: Ctrl+V paste (works with Thai and Unicode correctly)
+  notify_manual_paste
+  exit 0
+fi
+
 if xdotool key --clearmodifiers ctrl+v; then
   restore_clipboard
   exit 0
 fi
 
-# Fallback: xdotool type (may not work well with Thai)
-xdotool type --delay "$TYPE_DELAY" -- "$TEXT" 2>/dev/null
-restore_clipboard
+if xdotool type --delay "$TYPE_DELAY" -- "$TEXT" 2>/dev/null; then
+  restore_clipboard
+  exit 0
+fi
+
+notify_manual_paste

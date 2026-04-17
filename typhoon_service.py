@@ -20,8 +20,13 @@ CONFIG = load_config()
 MODEL = None
 TORCH = None
 NEMO_ASR = None
+AUTO_MODEL_FOR_SEQ2SEQ_LM = None
+AUTO_TOKENIZER = None
 DEVICE = "cpu"
 MODEL_LOCK = threading.Lock()
+TRANSLATION_MODEL = None
+TRANSLATION_TOKENIZER = None
+TRANSLATION_LOCK = threading.Lock()
 OWNS_SOCKET = False
 
 
@@ -79,6 +84,20 @@ def import_runtime_modules() -> None:
         pass
 
 
+def import_translation_modules() -> None:
+    global AUTO_MODEL_FOR_SEQ2SEQ_LM, AUTO_TOKENIZER
+
+    if AUTO_MODEL_FOR_SEQ2SEQ_LM is not None and AUTO_TOKENIZER is not None:
+        return
+
+    configure_runtime()
+
+    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
+
+    AUTO_MODEL_FOR_SEQ2SEQ_LM = AutoModelForSeq2SeqLM
+    AUTO_TOKENIZER = AutoTokenizer
+
+
 def resolve_device() -> str:
     import_runtime_modules()
 
@@ -129,6 +148,65 @@ def load_model() -> None:
         log("Warm-up completed")
     finally:
         temp_path.unlink(missing_ok=True)
+
+
+def _translate_text_loaded(text: str) -> str:
+    if not text.strip():
+        return ""
+
+    inputs = TRANSLATION_TOKENIZER(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=512,
+    )
+    if DEVICE == "cuda":
+        inputs = {key: value.to(DEVICE) for key, value in inputs.items()}
+
+    input_ids = inputs.get("input_ids")
+    max_new_tokens = 64
+    if input_ids is not None:
+        max_new_tokens = max(64, min(512, int(input_ids.shape[-1]) * 2))
+
+    with TRANSLATION_LOCK:
+        with TORCH.inference_mode():
+            generated = TRANSLATION_MODEL.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+            )
+
+    decoded = TRANSLATION_TOKENIZER.batch_decode(
+        generated,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=True,
+    )
+    translated = decoded[0].strip() if decoded else ""
+    translated = re.sub(r"\s+", " ", translated).strip()
+    translated = re.sub(r"\s+([,.;:!?%])", r"\1", translated)
+    return translated
+
+
+def load_translation_model() -> None:
+    global DEVICE, TRANSLATION_MODEL, TRANSLATION_TOKENIZER
+
+    if TRANSLATION_MODEL is not None and TRANSLATION_TOKENIZER is not None:
+        return
+
+    import_runtime_modules()
+    import_translation_modules()
+
+    DEVICE = resolve_device()
+    model_name = CONFIG.get("TYPHOON_TRANSLATE_MODEL", "Helsinki-NLP/opus-mt-th-en")
+
+    log(f"Loading translation model: {model_name} on {DEVICE.upper()}")
+    TRANSLATION_TOKENIZER = AUTO_TOKENIZER.from_pretrained(model_name)
+    TRANSLATION_MODEL = AUTO_MODEL_FOR_SEQ2SEQ_LM.from_pretrained(model_name)
+    if DEVICE == "cuda":
+        TRANSLATION_MODEL.to(DEVICE)
+    TRANSLATION_MODEL.eval()
+
+    _translate_text_loaded("สวัสดีครับ")
+    log("Translation warm-up completed")
 
 
 def prepare_audio(input_path: Path) -> Path:
@@ -193,11 +271,19 @@ def postprocess_text(text: str, profile: str) -> str:
     cleaned = re.sub(r"([([{])\s+", r"\1", cleaned)
     cleaned = re.sub(r"\s+([)\]}])", r"\1", cleaned)
 
-    if normalize_profile(profile) == "smart":
+    if normalize_profile(profile) in {"smart", "th_to_eng"}:
         for source, target in load_replacements():
             cleaned = cleaned.replace(source, target)
 
     return cleaned.strip()
+
+
+def translate_text(text: str) -> str:
+    if not text.strip():
+        return ""
+
+    load_translation_model()
+    return _translate_text_loaded(text)
 
 
 def extract_text(result) -> str:
@@ -224,15 +310,20 @@ def transcribe_audio(audio_path: Path, profile: str | None = None) -> dict:
         with MODEL_LOCK:
             with TORCH.inference_mode():
                 raw_result = MODEL.transcribe(audio=[str(processed_path)])
+
+        source_text = postprocess_text(extract_text(raw_result), active_profile)
+        text = translate_text(source_text) if active_profile == "th_to_eng" else source_text
         processing_time = time.perf_counter() - start
 
-        text = postprocess_text(extract_text(raw_result), active_profile)
         return {
             "ok": True,
             "text": text,
+            "source_text": source_text,
             "profile": active_profile,
             "device": DEVICE,
             "model": CONFIG.get("TYPHOON_MODEL", "scb10x/typhoon-asr-realtime"),
+            "translate_model": CONFIG.get("TYPHOON_TRANSLATE_MODEL", "Helsinki-NLP/opus-mt-th-en"),
+            "translation_applied": active_profile == "th_to_eng",
             "audio_duration": audio_duration,
             "processing_time": processing_time,
             "rtf": (processing_time / audio_duration) if audio_duration else 0.0,
@@ -257,6 +348,16 @@ class TyphoonHandler(socketserver.StreamRequestHandler):
                     "profile": get_active_profile(CONFIG),
                     "device": DEVICE,
                     "model": CONFIG.get("TYPHOON_MODEL", "scb10x/typhoon-asr-realtime"),
+                    "translate_model": CONFIG.get("TYPHOON_TRANSLATE_MODEL", "Helsinki-NLP/opus-mt-th-en"),
+                }
+            elif action == "translate":
+                source_text = str(request.get("text", ""))
+                response = {
+                    "ok": True,
+                    "text": translate_text(source_text),
+                    "source_text": source_text,
+                    "device": DEVICE,
+                    "translate_model": CONFIG.get("TYPHOON_TRANSLATE_MODEL", "Helsinki-NLP/opus-mt-th-en"),
                 }
             elif action == "transcribe":
                 audio_path = Path(request["audio_path"]).resolve()
@@ -295,7 +396,12 @@ def main() -> int:
     parser.add_argument(
         "--preload-only",
         action="store_true",
-        help="Download and warm the model, then exit",
+        help="Download and warm the ASR model, then exit",
+    )
+    parser.add_argument(
+        "--preload-translation",
+        action="store_true",
+        help="Download and warm the Thai-to-English translation model, then exit",
     )
     args = parser.parse_args()
 
@@ -303,10 +409,14 @@ def main() -> int:
     signal.signal(signal.SIGINT, handle_signal)
     atexit.register(cleanup)
 
-    load_model()
-
     if args.preload_only:
+        load_model()
+    if args.preload_translation:
+        load_translation_model()
+    if args.preload_only or args.preload_translation:
         return 0
+
+    load_model()
 
     SOCKET_FILE.unlink(missing_ok=True)
     SERVICE_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")

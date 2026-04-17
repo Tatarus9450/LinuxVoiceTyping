@@ -1,32 +1,25 @@
 # Linux Voice Typing
 
-Offline voice-to-text for Linux with a local [Typhoon ASR](https://github.com/scb-10x/typhoon-asr) worker.
-Optimized for fast Thai dictation with Thai-English mixed speech support through a persistent local service.
+ระบบพิมพ์ด้วยเสียงบน Linux สำหรับพูดภาษาไทย, ไทยปนอังกฤษ, และแปลไทยเป็นอังกฤษก่อนพิมพ์ลงแอปที่กำลังใช้งานอยู่
+
+Linux voice typing for Thai speech, Thai-English mixed speech, and Thai-to-English translation before inserting text into the app you are currently using.
+
+ใช้ [Typhoon ASR](https://github.com/scb-10x/typhoon-asr) เป็น backend หลัก และรันงานถอดเสียงกับแปลภาษาในเครื่องของคุณเอง
+
+It uses [Typhoon ASR](https://github.com/scb-10x/typhoon-asr) as the main backend and runs transcription plus translation locally on your machine.
 
 ---
 
-## ✨ Features
+## โปรแกรมนี้มีประโยชน์อะไร / Why Use It
 
-- **100% Local** — Transcription runs on your machine with a self-hosted Typhoon backend.
-- **Persistent ASR Worker** — Keeps the model loaded in memory for lower hotkey-to-text latency.
-- **Thai + Mixed Dictation** — Default smart mode is tuned for Thai speech with English terms mixed in.
-- **Works Everywhere** — Types into any focused application via clipboard paste.
-- **Minimal UI** — Sleek dark overlay shows real-time status (Listening → Thinking → Typing).
-- **Persistent** — Starts on login via `xbindkeys` global shortcuts.
+- พิมพ์ข้อความด้วยเสียงได้เร็วขึ้น โดยไม่ต้องสลับไปเปิดเว็บถอดเสียง. Type faster with your voice without switching to a web transcription tool.
+- เหมาะกับงานพูดภาษาไทยและคำอังกฤษปนไทย. Good for Thai dictation and Thai speech with mixed English words.
+- มีโหมดแปลไทยเป็นอังกฤษให้เลย. Includes a Thai-to-English output mode.
+- ใช้งานได้ทั้ง X11 และ Wayland ตาม session ที่กำลังใช้งานอยู่. Works with either X11 or Wayland based on your current session.
 
 ---
 
-## 🖥️ Requirements
-
-- **OS**: Linux with X11 (tested on Kubuntu 24.04 / KDE Plasma)
-- **Architecture**: x86_64
-- **CPU**: Multi-core CPU strongly recommended
-- **RAM**: 8 GB minimum, 16 GB+ recommended
-- **Microphone**: Any ALSA-compatible input device
-
----
-
-## 🚀 Quick Start
+## ติดตั้ง / Install
 
 ```bash
 git clone https://github.com/Tatarus9450/LinuxVoiceTyping.git
@@ -35,102 +28,70 @@ chmod +x install.sh
 ./install.sh
 ```
 
-`install.sh` works as both an installer and a repair script. Re-running it will verify the local setup, repair the Typhoon worker state, refresh dependencies, and restore hotkeys/autostart if needed.
+ตอนรัน `./install.sh` ให้ตอบเป็นตัวเลข:
 
-The install / repair flow will:
-1. Install all system dependencies
-2. Create a project-local Python virtualenv
-3. Install PyTorch + Typhoon ASR into `.venv`
-4. Download the model automatically into `.cache/huggingface`
-5. Warm and validate the local Typhoon worker
-6. Configure global hotkeys (`Meta+H`)
-7. Set up autostart on login and prewarm the worker
+When `./install.sh` starts, answer with a number:
 
-> Restart your session if shortcuts don't work immediately.
-> The first install requires internet access to download Python packages and model weights.
+- `1` ติดตั้งหรือซ่อมโปรแกรมนี้
+- `2` ถอนการติดตั้ง
+
+- `1` install or repair the project
+- `2` uninstall it
+
+ถ้าคุณเปลี่ยนจาก X11 ไป Wayland หรือเปลี่ยน desktop environment ภายหลัง ให้รัน `./install.sh` ใหม่อีกครั้ง
+
+If you later switch between X11 and Wayland, or change desktop environments, run `./install.sh` again.
+
+ถ้าต้องการตรวจระบบหลังติดตั้งเอง ให้รัน `python3 self_check.py`
+
+If you want to run a manual health check after installation, run `python3 self_check.py`
 
 ---
 
-## ⌨️ Usage
+## วิธีใช้งาน / How To Use
 
 | Shortcut | Action |
 | :--- | :--- |
-| `Meta + H` | **Start / Stop** recording |
-| `Meta + Shift + H` | **Toggle dictation profile** (`Smart Mix` ↔ `Raw`) |
+| `Meta + H` | เริ่มหรือหยุดการอัดเสียง / Start or stop recording |
+| `Meta + Shift + H` | เปลี่ยนโหมดการพิมพ์ / Change the dictation mode |
 
-### How it works
+วิธีใช้งาน:
 
-1. Optional: press `Meta + Shift + H` to switch between `Smart Mix` and `Raw`.
-2. Place your cursor where you want to type.
-3. Press `Meta + H` — the overlay shows **🔴 Listening**.
-4. Speak clearly.
-5. Press `Meta + H` again — **🔵 Thinking** → **🟢 Typing**.
-6. Text appears in your active window.
+Usage flow:
 
----
-
-## ⚙️ Configuration
-
-Edit `config.env` to customize:
-
-```bash
-nano ~/Documents/LinuxVoiceTyping/config.env
-```
-
-| Setting | Default | Description |
-| :--- | :--- | :--- |
-| `TYPHOON_MODEL` | `scb10x/typhoon-asr-realtime` | Local Typhoon model name |
-| `TYPHOON_DEVICE` | `auto` | Runtime device (`cpu`, `auto`, `cuda`) |
-| `TYPHOON_CPU_THREADS` | `16` | CPU threads for PyTorch / Typhoon |
-| `TYPHOON_HF_HOME` | `.cache/huggingface` | Local model/cache directory used by Hugging Face |
-| `TYPHOON_PROFILE_DEFAULT` | `smart` | Default dictation profile (`smart`, `raw`) |
-| `TYPHOON_REPLACEMENTS_FILE` | `typhoon_replacements.tsv` | Optional custom replacements for smart mode |
-| `ARECORD_DEVICE` | *(empty)* | ALSA mic override (find with `arecord -L`) |
-| `TYPE_DELAY` | `6` | Typing delay for xdotool fallback |
-| `POPUP_ENABLED` | `true` | Show/hide status overlay |
+1. วางเคอร์เซอร์ในแอปที่ต้องการพิมพ์. Place your cursor in the target app.
+2. ถ้าต้องการ เปลี่ยนโหมดด้วย `Meta + Shift + H`. If needed, change the mode with `Meta + Shift + H`.
+3. กด `Meta + H` เพื่อเริ่มอัดเสียง. Press `Meta + H` to start recording.
+4. พูดใส่ไมโครโฟน. Speak into your microphone.
+5. กด `Meta + H` อีกครั้งเพื่อหยุดอัด. Press `Meta + H` again to stop recording.
+6. ระบบจะถอดเสียงหรือแปลภาษา แล้วพิมพ์กลับเข้าแอปให้อัตโนมัติ. The app transcribes or translates your speech and inserts the text back into the target app.
 
 ---
 
-## 📂 Project Structure
+## โหมดการใช้งาน / Modes
 
-```
-LinuxVoiceTyping/
-├── autostart.sh       # Starts hotkeys and prewarms the Typhoon worker
-├── agent.py           # Main controller (start/stop toggle)
-├── popup.py           # Minimal UI overlay (tkinter)
-├── transcribe.sh      # Shell wrapper around the Typhoon client
-├── type.sh            # Text output (clipboard paste)
-├── toggle_lang.sh     # Dictation profile switcher
-├── typhoon_backend.py # Shared Typhoon service client helpers
-├── typhoon_client.py  # CLI client for the local Typhoon worker
-├── typhoon_service.py # Persistent local Typhoon worker
-├── typhoon_replacements.tsv # Optional smart-mode replacements
-├── config.env         # User settings
-├── config.env.example # Settings template
-├── install.sh         # Install / repair script
-└── .cache/            # Git-ignored model/cache directory
-```
+- `Smart Mix` ใช้สำหรับพูดไทยที่มีคำอังกฤษปน. For Thai speech with mixed English terms.
+- `Raw` ใช้เมื่ออยากได้ข้อความแบบตรงที่สุด. For the most direct raw transcription.
+- `TH to ENG` ใช้เมื่อพูดภาษาไทย แต่ต้องการผลลัพธ์เป็นภาษาอังกฤษ. For speaking Thai but getting English output.
+
+ใน popup:
+
+In the popup:
+
+- `MIX` = `Smart Mix`
+- `RAW` = `Raw`
+- `TH>ENG` = `TH to ENG`
 
 ---
 
-## 🛠️ Troubleshooting
+## หมายเหตุสั้น ๆ / Quick Notes
 
-| Problem | Solution |
-| :--- | :--- |
-| No sound recorded | Check mic input in System Settings or `arecord -L` |
-| Text not appearing | Target app may block paste — try a different app |
-| Popup missing | Install `python3-tk`: `sudo apt install python3-tk` |
-| Install / repair downloaded a lot of files | Typhoon/NVIDIA NeMo dependencies are large; this is expected on the first install or after dependency refresh |
-| Slow first transcription | The worker may still be downloading or warming the model; wait for the first run to finish |
-| Mixed Thai-English terms look wrong | Add overrides in `typhoon_replacements.tsv` and stay in `Smart Mix` mode |
-| Smart mode changes text too much | Press `Meta+Shift+H` to switch to `Raw` |
-
-**Logs**:
-- `/tmp/agent_debug.log` for the hotkey controller
-- `/tmp/voice_agent_typhoon.log` for the Typhoon worker
+- runtime ของการถอดเสียงและแปลภาษาเป็น local. Runtime transcription and translation are local.
+- บน Wayland บางแอปอาจต้อง paste เองจาก clipboard ถ้า auto-paste ถูกบล็อก. On Wayland, some apps may require manual paste from the clipboard if auto-paste is blocked.
+- ถ้า hotkey ยังไม่ทำงานหลังติดตั้ง ให้ logout/login ใหม่ก่อน. If shortcuts do not work immediately after install, try logging out and back in first.
 
 ---
 
-## 📄 License
+## License
 
 MIT

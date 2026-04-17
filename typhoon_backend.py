@@ -16,6 +16,7 @@ PROFILE_FILE = Path("/tmp/voice_agent_profile")
 DEFAULT_CONFIG = {
     "POPUP_ENABLED": "true",
     "TYPHOON_MODEL": "scb10x/typhoon-asr-realtime",
+    "TYPHOON_TRANSLATE_MODEL": "Helsinki-NLP/opus-mt-th-en",
     "TYPHOON_DEVICE": "auto",
     "TYPHOON_CPU_THREADS": str(os.cpu_count() or 4),
     "TYPHOON_VENV": str((BASE / ".venv").resolve()),
@@ -74,7 +75,11 @@ def normalize_profile(value: str | None) -> str:
     if not value:
         return "smart"
     normalized = value.strip().lower()
-    return "raw" if normalized == "raw" else "smart"
+    if normalized == "raw":
+        return "raw"
+    if normalized in {"th_to_eng", "th-to-eng", "th2eng", "translate"}:
+        return "th_to_eng"
+    return "smart"
 
 
 def get_active_profile(config: dict[str, str] | None = None) -> str:

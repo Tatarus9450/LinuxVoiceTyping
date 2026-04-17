@@ -11,7 +11,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Linux Voice Typing Typhoon client")
     parser.add_argument("audio_file", nargs="?", help="Audio file to transcribe")
     parser.add_argument("--output", help="Write the final text to this file")
-    parser.add_argument("--profile", choices=["smart", "raw"], help="Override dictation profile")
+    parser.add_argument(
+        "--profile",
+        choices=["smart", "raw", "th_to_eng"],
+        help="Override dictation profile",
+    )
     parser.add_argument(
         "--ensure-service",
         action="store_true",

@@ -169,6 +169,8 @@ class MinimalPopup(tk.Tk):
                 profile = PROFILE_FILE.read_text().strip().lower()
                 if profile == "raw":
                     profile_text = "RAW"
+                elif profile in {"th_to_eng", "th-to-eng", "th2eng"}:
+                    profile_text = "TH>ENG"
                 else:
                     profile_text = "MIX"
             except:
