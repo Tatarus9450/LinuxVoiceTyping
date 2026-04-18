@@ -819,6 +819,7 @@ remove_runtime_state() {
     rm -f \
         "$AUTOSTART_DESKTOP_FILE" \
         /tmp/agent_debug.log \
+        /tmp/voice_agent_arecord.log \
         /tmp/voice_agent_arecord.pid \
         /tmp/voice_agent_last_trigger \
         /tmp/voice_agent_trigger.lock \
@@ -1070,13 +1071,7 @@ else
 fi
 
 if grep -q 'ARECORD_DEVICE=""' "$SCRIPT_DIR/config.env"; then
-    DEFAULT_MIC="$(arecord -L 2>/dev/null | grep '^sysdefault:' | head -1 || true)"
-    if [[ -n "$DEFAULT_MIC" ]]; then
-        sed -i "s|ARECORD_DEVICE=\"\"|ARECORD_DEVICE=\"$DEFAULT_MIC\"|" "$SCRIPT_DIR/config.env"
-        ok "ตรวจพบไมโครโฟนอัตโนมัติ: $DEFAULT_MIC" "Auto-detected mic: $DEFAULT_MIC"
-    else
-        ok "จะใช้ไมโครโฟนค่าเริ่มต้นของระบบ" "Using the system default microphone"
-    fi
+    ok "จะใช้ไมโครโฟนค่าเริ่มต้นของระบบ" "Using the system default microphone"
 fi
 
 NPROC="$(nproc 2>/dev/null || echo 4)"

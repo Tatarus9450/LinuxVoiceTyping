@@ -11,6 +11,7 @@ from typhoon_backend import config_bool, ensure_service, load_config
 HOME = Path.home()
 BASE = Path(__file__).parent.resolve()
 PID_FILE = Path("/tmp/voice_agent_arecord.pid")
+ARECORD_LOG_FILE = Path("/tmp/voice_agent_arecord.log")
 POPUP_PID_FILE = Path("/tmp/voice_agent_popup.pid")
 WAV_FILE = Path("/tmp/voice_agent.wav")
 STATUS_FILE = Path("/tmp/voice_agent_status")
@@ -28,6 +29,102 @@ def notify(msg: str):
 
 def set_status(status: str):
     STATUS_FILE.write_text(status)
+
+
+def read_recent_arecord_log(max_lines: int = 8) -> str:
+    if not ARECORD_LOG_FILE.exists():
+        return ""
+
+    try:
+        lines = [line.strip() for line in ARECORD_LOG_FILE.read_text(encoding="utf-8", errors="ignore").splitlines()]
+    except Exception:
+        return ""
+
+    lines = [line for line in lines if line]
+    if not lines:
+        return ""
+    return " | ".join(lines[-max_lines:])
+
+
+def build_arecord_command(config, device_override=None):
+    arecord_cmd = ["arecord"]
+    if device_override:
+        arecord_cmd.extend(["-D", device_override])
+    arecord_cmd.extend(
+        [
+            "-f",
+            config.get("ARECORD_FORMAT", "S16_LE"),
+            "-c",
+            config.get("ARECORD_CHANNELS", "1"),
+            "-r",
+            config.get("ARECORD_RATE", "16000"),
+            "-t",
+            "wav",
+            str(WAV_FILE),
+        ]
+    )
+    return arecord_cmd
+
+
+def get_arecord_candidates(config):
+    configured = config.get("ARECORD_DEVICE", "").strip()
+    candidates = []
+    seen = set()
+
+    def add(value):
+        key = value or ""
+        if key not in seen:
+            candidates.append(value)
+            seen.add(key)
+
+    if configured:
+        add(configured)
+
+    add(None)
+    add("default")
+    add("pulse")
+    return candidates
+
+
+def start_arecord_process(config):
+    ARECORD_LOG_FILE.unlink(missing_ok=True)
+
+    last_error = ""
+    for candidate in get_arecord_candidates(config):
+        arecord_cmd = build_arecord_command(config, device_override=candidate)
+        label = candidate or "system default"
+
+        with ARECORD_LOG_FILE.open("ab") as log_file:
+            log_file.write(f"\n=== Attempt device: {label} ===\n".encode("utf-8"))
+            proc = subprocess.Popen(
+                arecord_cmd,
+                cwd=str(BASE),
+                stdout=log_file,
+                stderr=log_file,
+                start_new_session=True,
+            )
+
+        time.sleep(0.15)
+        if proc.poll() is None:
+            return proc, label
+
+        last_error = read_recent_arecord_log() or f"arecord exited with code {proc.returncode}"
+        log(f"Recording start failed on {label}: {last_error}")
+
+    return None, last_error
+
+
+def recording_output_ready(timeout: float = 2.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if WAV_FILE.exists():
+            try:
+                if WAV_FILE.stat().st_size > 0:
+                    return True
+            except OSError:
+                pass
+        time.sleep(0.05)
+    return WAV_FILE.exists()
 
 
 def is_duplicate_trigger() -> bool:
@@ -73,24 +170,16 @@ def start_recording():
     except TypeError:
         if WAV_FILE.exists(): WAV_FILE.unlink()
 
-    # Start Recording
-    cmd = [
-        "bash", "-lc",
-        f"""
-        set -e
-        source "{BASE}/config.env"
-        ARECORD_FORMAT="${{ARECORD_FORMAT:-S16_LE}}"
-        ARECORD_CHANNELS="${{ARECORD_CHANNELS:-1}}"
-        ARECORD_RATE="${{ARECORD_RATE:-16000}}"
-        if [[ -n "$ARECORD_DEVICE" ]]; then
-          arecord -D "$ARECORD_DEVICE" -f "$ARECORD_FORMAT" -c "$ARECORD_CHANNELS" -r "$ARECORD_RATE" -t wav "{WAV_FILE}" &
-        else
-          arecord -f "$ARECORD_FORMAT" -c "$ARECORD_CHANNELS" -r "$ARECORD_RATE" -t wav "{WAV_FILE}" &
-        fi
-        echo $! > "{PID_FILE}"
-        """
-    ]
-    subprocess.run(cmd, check=True)
+    proc, device_label = start_arecord_process(config)
+    if proc is None:
+        PID_FILE.unlink(missing_ok=True)
+        error_details = device_label or "Unable to start arecord."
+        log(f"Recording failed to start: {error_details}")
+        notify(f"Recording failed: {error_details}")
+        return
+
+    PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+    log(f"Recording started with {device_label}")
 
     set_status("recording")
 
@@ -120,7 +209,7 @@ def stop_recording_and_type():
     if pid:
         try:
             os.kill(pid, signal.SIGINT)
-            time.sleep(1.0) 
+            time.sleep(1.0)
             try:
                 os.kill(pid, 0)
                 os.kill(pid, signal.SIGKILL)
@@ -128,6 +217,13 @@ def stop_recording_and_type():
         except: pass
     
     PID_FILE.unlink(missing_ok=True)
+
+    if not recording_output_ready(timeout=2.0):
+        kill_popup()
+        error_details = read_recent_arecord_log() or "No audio file was created. Check your microphone or ARECORD_DEVICE."
+        log(f"Recording did not produce audio: {error_details}")
+        notify(f"Recording failed: {error_details}")
+        return
 
     # 2. Update Status to Transcribing (Popup shows "Thinking...")
     set_status("transcribing")
