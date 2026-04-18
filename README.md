@@ -56,6 +56,7 @@ If you want to run a manual health check after installation, run `python3 self_c
 | :--- | :--- |
 | `Meta + H` | เริ่มหรือหยุดการอัดเสียง / Start or stop recording |
 | `Meta + Shift + H` | เปลี่ยนโหมดการพิมพ์ / Change the dictation mode |
+** ปุ่ม Meta คือปุ่มที่มีโลโก้ Windows ที่อยู่บนคีย์บอร์ดกันเกือบทุกคนเลยนะ หรือบางคนมีเขียนไว้แค่คําว่า WIN
 
 วิธีใช้งาน:
 
