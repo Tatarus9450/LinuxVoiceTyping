@@ -848,7 +848,7 @@ schedule_project_directory_removal() {
     local target="$1"
 
     if [ -z "$target" ] || [ "$target" = "/" ] || [ "$target" = "$HOME" ] || [ ! -f "$target/install.sh" ]; then
-        warn "ข้ามการลบโฟลเดอร์โปรเจกต์เพราะ path ไม่ปลอดภัย: $target" "Skipped project directory removal because the path is not safe: $target"
+        warn "ข้ามการลบโฟลเดอร์โปรแกรมเพราะ path ไม่ปลอดภัย: $target" "Skipped project directory removal because the path is not safe: $target"
         return 1
     fi
 
@@ -872,13 +872,13 @@ run_uninstall() {
     remove_runtime_state
     ok "ลบการเชื่อมต่อกับระบบเดสก์ท็อปแล้ว" "Removed desktop integration"
 
-    step 4 "ลบไฟล์ runtime และ cache ของโปรเจกต์..." "Removing project runtime files and caches..."
+    step 4 "ลบไฟล์ runtime และ cache ของโปรแกรม..." "Removing project runtime files and caches..."
     remove_project_artifacts
     ok "ลบ virtualenv, cache, config และไฟล์ชั่วคราวแล้ว" "Removed the virtualenv, caches, config, and temporary files"
 
-    step 5 "ลบโฟลเดอร์โปรเจกต์..." "Removing the project directory..."
+    step 5 "ลบโฟลเดอร์โปรแกรม..." "Removing the project directory..."
     schedule_project_directory_removal "$SCRIPT_DIR"
-    ok "ตั้งเวลาลบโฟลเดอร์โปรเจกต์หลังสคริปต์ปิดตัวแล้ว" "Scheduled project directory removal after the script exits"
+    ok "ตั้งเวลาลบโฟลเดอร์โปรแกรมหลังสคริปต์ปิดตัวแล้ว" "Scheduled project directory removal after the script exits"
 
     echo ""
     echo -e "${G}╔══════════════════════════════════════╗${NC}"
@@ -886,7 +886,7 @@ run_uninstall() {
     echo -e "${G}║     Uninstall Complete Successfully  ║${NC}"
     echo -e "${G}╚══════════════════════════════════════╝${NC}"
     echo ""
-    note "ลบไฟล์และการตั้งค่าของโปรเจกต์แล้ว รวมถึงโฟลเดอร์นี้ด้วย" "Project files and local integration have been removed, including this project directory"
+    note "ลบไฟล์และการตั้งค่าของโปรแกรมแล้ว รวมถึงโฟลเดอร์นี้ด้วย" "Project files and local integration have been removed, including this project directory"
     note "แพ็กเกจระบบที่อาจถูกใช้ร่วมกับโปรแกรมอื่นจะไม่ถูกถอนออกอัตโนมัติ" "Shared system packages are not removed automatically because other applications may still depend on them"
     echo ""
 }
@@ -894,7 +894,7 @@ run_uninstall() {
 prompt_mode_selection() {
     echo -e "${Y}เลือกโหมดการทำงาน / Choose an action${NC}"
     echo "  1. ติดตั้งหรือซ่อมโปรแกรมนี้ / Install or repair this project"
-    echo "  2. ถอนการติดตั้งและลบข้อมูลของโปรเจกต์นี้ / Uninstall and remove this project's data"
+    echo "  2. ถอนการติดตั้งและลบข้อมูลของโปรแกรมนี้ / Uninstall and remove this project's data"
     echo ""
 
     while true; do
@@ -941,7 +941,7 @@ echo ""
 echo -e "${G}╔══════════════════════════════════════════╗${NC}"
 echo -e "${G}║  Phim Thai Mai Pen — Install / Uninstall ║${NC}"
 echo -e "${G}╚══════════════════════════════════════════╝${NC}"
-echo -e "  โปรเจกต์ / Project: ${Y}$SCRIPT_DIR${NC}"
+echo -e "  โปรแกรม / Project: ${Y}$SCRIPT_DIR${NC}"
 echo ""
 
 if [ -f /etc/os-release ]; then
@@ -1049,7 +1049,7 @@ verify_backend_commands
 ok "ติดตั้ง dependency ของระบบสำหรับ $SESSION_TYPE บน $(desktop_display_name "$DESKTOP_ENVIRONMENT") แล้ว" "System dependencies are installed for $SESSION_TYPE on $(desktop_display_name "$DESKTOP_ENVIRONMENT")"
 
 # ── 3. Configuration ──
-step 3 "เตรียมสถานะของโปรเจกต์..." "Preparing project state..."
+step 3 "เตรียมสถานะของโปรแกรม..." "Preparing project state..."
 
 if [ ! -f "$SCRIPT_DIR/config.env" ]; then
     [ -f "$SCRIPT_DIR/config.env.example" ] || fail "ไม่พบไฟล์ config.env.example" "config.env.example is missing!"

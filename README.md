@@ -104,6 +104,37 @@ In the popup:
 
 ---
 
+## self_check.py ใช้ทำอะไร ใช้ยังไง / What self_check.py Is For? How to Use?
+
+`self_check.py` มีไว้เช็กแบบเร็ว ๆ ว่าโปรแกรมยังพร้อมใช้งานอยู่หรือไม่ เช่น dependency หลัก, worker, popup, การถอดเสียง, และการแปลภาษา โดยเอาไว้ตรวจสอบว่าโปรแกรมตัวนี้สามารถทำงานได้ถูกต้องกับเครื่องคอมพิวเตอร์ตอนนี้หรือไม่; หากมีข้อผิดพลาด คุณจะได้ตัดสินใจซ่อมโปรแกรมนี้ได้ทันที หรือถ้าคุณใจดีจะช่วยแจ้งปัญหาการใช้งานให้ผู้พัฒนาก็ได้
+
+`self_check.py` is a quick health check to see whether the app is still ready to use on the current computer, including the main dependencies, worker, popup, transcription, and translation paths; if something is broken, you can decide to repair it right away, or report the issue to the developer if you feel generous.
+
+วิธีใช้:
+
+How to use:
+
+```bash
+python3 self_check.py
+```
+
+หรือถ้าอยู่ใน virtualenv:
+
+Or if you are already inside the virtualenv:
+
+```bash
+./.venv/bin/python self_check.py
+```
+
+หมายเหตุ:
+
+Notes:
+
+- เหมาะกับการใช้หลังติดตั้ง หรือหลังแก้โค้ดบางส่วน Useful after installation or after making code changes.
+- มันไม่ใช่การทดสอบไมโครโฟนจริงทุกครั้ง เพราะ smoke test (ใช้ไฟล์เสียงจำลอง) It is not a full live microphone test every time, because the main smoke test uses a generated audio sample.
+
+---
+
 ## License
 
 MIT
