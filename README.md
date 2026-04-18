@@ -2,6 +2,10 @@
 
 Linux Thai Voice Typing HotKey
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/29660b40-78aa-4a22-9727-46f81606c7ef" alt="Phim Thai Mai Pen Banner" />
+</p>
+
 ระบบพิมพ์ด้วยเสียงบน Linux สำหรับพูดภาษาไทย, ไทยปนอังกฤษ, และแปลไทยเป็นอังกฤษก่อนพิมพ์ลงแอปที่กำลังใช้งานอยู่
 
 Linux voice typing for Thai speech, Thai-English mixed speech, and Thai-to-English translation before inserting text into the app you are currently using.
