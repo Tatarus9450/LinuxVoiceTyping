@@ -340,7 +340,7 @@ def summarize(results: list[CheckResult], as_json: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Linux Voice Typing self-check / smoke test")
+    parser = argparse.ArgumentParser(description="Phim Thai Mai Pen self-check / smoke test")
     parser.add_argument("--json", action="store_true", help="Print results as JSON")
     parser.add_argument(
         "--skip-translation",

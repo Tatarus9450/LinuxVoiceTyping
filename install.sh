@@ -115,13 +115,13 @@ toggle_command = sys.argv[3]
 text = path.read_text(encoding="utf-8", errors="ignore")
 blocks = [
     (
-        "# Voice Agent Shortcut\n"
+        "# Phim Thai Mai Pen Shortcut\n"
         f"\"{agent_command}\"\n"
         "  m:0x50 + c:43\n"
         "  Mod4+h\n"
     ),
     (
-        "# Voice Agent Language Toggle\n"
+        "# Phim Thai Mai Pen Language Toggle\n"
         f"\"{toggle_command}\"\n"
         "  m:0x50 + c:43 + Shift\n"
         "  Mod4+Shift+h\n"
@@ -532,7 +532,7 @@ configure_x11_shortcuts() {
     local xb_block
 
     read -r -d '' xb_block <<EOF || true
-# Meta+H = Start/Stop Recording
+# Meta+H = Start/Stop Recording for Phim Thai Mai Pen
 "$agent_cmd"
   Mod4+h
 
@@ -562,11 +562,11 @@ configure_gnome_shortcuts() {
     updated="$(append_gsettings_path "$updated" "$toggle_path")"
     gsettings set "$schema" custom-keybindings "$updated"
 
-    gsettings set "$record_schema" name "Linux Voice Typing"
+    gsettings set "$record_schema" name "Phim Thai Mai Pen"
     gsettings set "$record_schema" command "$SCRIPT_DIR/agent.py"
     gsettings set "$record_schema" binding "<Super>h"
 
-    gsettings set "$toggle_schema" name "Linux Voice Typing Profile"
+    gsettings set "$toggle_schema" name "Phim Thai Mai Pen Profile"
     gsettings set "$toggle_schema" command "$SCRIPT_DIR/toggle_lang.sh"
     gsettings set "$toggle_schema" binding "<Super><Shift>h"
     ok "ตั้ง shortcuts ของ GNOME สำหรับ session ปัจจุบันแล้ว" "Configured GNOME shortcuts for the current session"
@@ -589,11 +589,11 @@ configure_cinnamon_shortcuts() {
     updated="$(append_gsettings_token "$updated" "$toggle_id")"
     gsettings set "$list_schema" custom-list "$updated"
 
-    gsettings set "$record_schema" name "Linux Voice Typing"
+    gsettings set "$record_schema" name "Phim Thai Mai Pen"
     gsettings set "$record_schema" command "$SCRIPT_DIR/agent.py"
     gsettings set "$record_schema" binding "<Super>h"
 
-    gsettings set "$toggle_schema" name "Linux Voice Typing Profile"
+    gsettings set "$toggle_schema" name "Phim Thai Mai Pen Profile"
     gsettings set "$toggle_schema" command "$SCRIPT_DIR/toggle_lang.sh"
     gsettings set "$toggle_schema" binding "<Super><Shift>h"
     ok "ตั้ง shortcuts ของ Cinnamon สำหรับ session ปัจจุบันแล้ว" "Configured Cinnamon shortcuts for the current session"
@@ -602,11 +602,11 @@ configure_cinnamon_shortcuts() {
 configure_mate_shortcuts() {
     command -v dconf >/dev/null 2>&1 || { warn "ไม่พบ dconf; ข้ามการตั้ง shortcut ของ MATE" "dconf was not found; skipping MATE shortcut setup"; return 1; }
 
-    dconf write /org/mate/desktop/keybindings/custom0/name "'Linux Voice Typing'"
+    dconf write /org/mate/desktop/keybindings/custom0/name "'Phim Thai Mai Pen'"
     dconf write /org/mate/desktop/keybindings/custom0/action "'$SCRIPT_DIR/agent.py'"
     dconf write /org/mate/desktop/keybindings/custom0/binding "'<Super>h'"
 
-    dconf write /org/mate/desktop/keybindings/custom1/name "'Linux Voice Typing Profile'"
+    dconf write /org/mate/desktop/keybindings/custom1/name "'Phim Thai Mai Pen Profile'"
     dconf write /org/mate/desktop/keybindings/custom1/action "'$SCRIPT_DIR/toggle_lang.sh'"
     dconf write /org/mate/desktop/keybindings/custom1/binding "'<Super><Shift>h'"
     ok "ตั้ง shortcuts ของ MATE สำหรับ session ปัจจุบันแล้ว" "Configured MATE shortcuts for the current session"
@@ -634,7 +634,7 @@ configure_plasma_shortcuts() {
     cat > "$record_file" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Linux Voice Typing
+Name=Phim Thai Mai Pen
 Exec=$SCRIPT_DIR/agent.py
 NoDisplay=true
 StartupNotify=false
@@ -645,7 +645,7 @@ EOF
     cat > "$toggle_file" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Linux Voice Typing Profile
+Name=Phim Thai Mai Pen Profile
 Exec=$SCRIPT_DIR/toggle_lang.sh
 NoDisplay=true
 StartupNotify=false
@@ -938,7 +938,7 @@ verify_backend_commands() {
 # ── Header ──
 echo ""
 echo -e "${G}╔══════════════════════════════════════════╗${NC}"
-echo -e "${G}║ Linux Voice Typing — Install / Uninstall ║${NC}"
+echo -e "${G}║  Phim Thai Mai Pen — Install / Uninstall ║${NC}"
 echo -e "${G}╚══════════════════════════════════════════╝${NC}"
 echo -e "  โปรเจกต์ / Project: ${Y}$SCRIPT_DIR${NC}"
 echo ""
@@ -1175,9 +1175,9 @@ mkdir -p "$AUTOSTART_DIR"
 cat > "$AUTOSTART_DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Linux Voice Typing
+Name=Phim Thai Mai Pen
 Exec=$AUTOSTART_SCRIPT
-Comment=Start hotkeys and warm the Typhoon worker
+Comment=Linux Thai Voice Typing HotKey
 X-GNOME-Autostart-enabled=true
 EOF
 ok "ตั้งค่า autostart แล้ว" "Autostart has been configured"

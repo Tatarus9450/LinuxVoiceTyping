@@ -24,7 +24,7 @@ def log(msg):
 
 def notify(msg: str):
     log(f"Notify: {msg}")
-    subprocess.run(["notify-send", "Voice Agent", msg], check=False)
+    subprocess.run(["notify-send", "Phim Thai Mai Pen", msg], check=False)
 
 def set_status(status: str):
     STATUS_FILE.write_text(status)

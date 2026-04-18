@@ -8,7 +8,7 @@ from typhoon_backend import ensure_service, stop_service, transcribe_audio
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Linux Voice Typing Typhoon client")
+    parser = argparse.ArgumentParser(description="Phim Thai Mai Pen - Linux Thai Voice Typing HotKey client")
     parser.add_argument("audio_file", nargs="?", help="Audio file to transcribe")
     parser.add_argument("--output", help="Write the final text to this file")
     parser.add_argument(

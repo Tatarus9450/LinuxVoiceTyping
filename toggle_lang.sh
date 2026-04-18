@@ -14,11 +14,11 @@ CURRENT=$(tr -d '[:space:]' < "$PROFILE_FILE")
 
 if [ "$CURRENT" == "smart" ]; then
     echo "raw" > "$PROFILE_FILE"
-    notify-send "Voice Agent" "Dictation mode: Raw"
+    notify-send "Phim Thai Mai Pen" "Dictation mode: Raw"
 elif [ "$CURRENT" == "raw" ]; then
     echo "th_to_eng" > "$PROFILE_FILE"
-    notify-send "Voice Agent" "Dictation mode: TH to ENG"
+    notify-send "Phim Thai Mai Pen" "Dictation mode: TH to ENG"
 else
     echo "smart" > "$PROFILE_FILE"
-    notify-send "Voice Agent" "Dictation mode: Smart Mix"
+    notify-send "Phim Thai Mai Pen" "Dictation mode: Smart Mix"
 fi

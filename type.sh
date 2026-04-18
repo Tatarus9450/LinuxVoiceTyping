@@ -12,7 +12,7 @@ RESTORE_DELAY="${CLIPBOARD_RESTORE_DELAY:-0.15}"
 SESSION_TYPE="$(printf '%s' "${XDG_SESSION_TYPE:-x11}" | tr '[:upper:]' '[:lower:]')"
 
 if [[ -z "$TEXT" ]]; then
-  notify-send "Voice Agent" "No text recognized."
+  notify-send "Phim Thai Mai Pen" "No text recognized."
   exit 0
 fi
 
@@ -182,7 +182,7 @@ paste_via_wayland() {
 }
 
 notify_manual_paste() {
-  notify-send "Voice Agent" "Copied text to clipboard. Paste manually."
+  notify-send "Phim Thai Mai Pen" "Copied text to clipboard. Paste manually."
 }
 
 trap cleanup_previous_clipboard_file EXIT

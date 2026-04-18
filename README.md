@@ -1,4 +1,6 @@
-# Linux Voice Typing
+# Phim Thai Mai Pen
+
+Linux Thai Voice Typing HotKey
 
 ระบบพิมพ์ด้วยเสียงบน Linux สำหรับพูดภาษาไทย, ไทยปนอังกฤษ, และแปลไทยเป็นอังกฤษก่อนพิมพ์ลงแอปที่กำลังใช้งานอยู่
 
@@ -12,18 +14,17 @@ It uses [Typhoon ASR](https://github.com/scb-10x/typhoon-asr) as the main backen
 
 ## โปรแกรมนี้มีประโยชน์อะไร / Why Use It
 
-- พิมพ์ข้อความด้วยเสียงได้เร็วขึ้น โดยไม่ต้องสลับไปเปิดเว็บถอดเสียง. Type faster with your voice without switching to a web transcription tool.
-- เหมาะกับงานพูดภาษาไทยและคำอังกฤษปนไทย. Good for Thai dictation and Thai speech with mixed English words.
-- มีโหมดแปลไทยเป็นอังกฤษให้เลย. Includes a Thai-to-English output mode.
-- ใช้งานได้ทั้ง X11 และ Wayland ตาม session ที่กำลังใช้งานอยู่. Works with either X11 or Wayland based on your current session.
+1. เพิ่มระบบการพิมพ์ด้วยเสียงบน Linux ให้ฟีลใกล้เคียงกับที่หลายคนคุ้นจาก Windows Adds voice typing to Linux with a feel closer to what many people know from Windows.
+2. เหมาะกับคนไทยสุด ๆ และพยายามให้ใช้งานได้กับแทบทุกหน้าต่างทุกโปรแกรมในเครื่องนี้ แต่อาจมีบัคหรือแอปบางตัวดื้อบ้าง Very Thai-focused and intended to work across almost any app window on your machine, although some bugs or stubborn apps are expected.
+3. มีบัคแน่นอน เอาไว้ค่อยแก้ Bugs definitely exist. We can fix them later.
 
 ---
 
 ## ติดตั้ง / Install
 
 ```bash
-git clone https://github.com/Tatarus9450/LinuxVoiceTyping.git
-cd LinuxVoiceTyping
+git clone https://github.com/Tatarus9450/PhimThaiMaiPen.git
+cd PhimThaiMaiPen
 chmod +x install.sh
 ./install.sh
 ```
@@ -32,11 +33,8 @@ chmod +x install.sh
 
 When `./install.sh` starts, answer with a number:
 
-- `1` ติดตั้งหรือซ่อมโปรแกรมนี้
-- `2` ถอนการติดตั้ง
-
-- `1` install or repair the project
-- `2` uninstall it
+- `1` ติดตั้งหรือซ่อมโปรแกรมนี้ - install or repair the program
+- `2` ถอนการติดตั้ง - uninstall
 
 ถ้าคุณเปลี่ยนจาก X11 ไป Wayland หรือเปลี่ยน desktop environment ภายหลัง ให้รัน `./install.sh` ใหม่อีกครั้ง
 
@@ -84,10 +82,24 @@ In the popup:
 
 ---
 
-## หมายเหตุสั้น ๆ / Quick Notes
+## หลักการทำงาน / How It Works
+
+1. ผู้ใช้วางเคอร์เซอร์ไว้ในแอปที่ต้องการพิมพ์ แล้วกด `Meta + H` เพื่อเริ่มทำงาน. The user places the cursor in the target app and presses `Meta + H` to begin.
+2. โปรแกรมรับคำสั่งจาก hotkey แล้วเริ่มอัดเสียงจากไมโครโฟนผ่าน `arecord`. The app receives the hotkey trigger and starts recording from the microphone through `arecord`.
+3. ถ้าผู้ใช้กด `Meta + Shift + H` ก่อนหรือระหว่างใช้งาน โปรแกรมจะเปลี่ยนโหมดเป็น `Smart Mix`, `Raw`, หรือ `TH to ENG`. If the user presses `Meta + Shift + H` before or between runs, the app switches the active profile to `Smart Mix`, `Raw`, or `TH to ENG`.
+4. เมื่อผู้ใช้กด `Meta + H` อีกครั้ง โปรแกรมจะหยุดอัดเสียงแล้วส่งไฟล์เสียงไปให้ local worker. When the user presses `Meta + H` again, the app stops recording and sends the audio file to the local worker.
+5. worker จะเตรียมไฟล์เสียงให้อยู่ในรูปแบบที่เหมาะกับโมเดล แล้วส่งเข้า Typhoon ASR เพื่อถอดเสียง. The worker normalizes the audio into the model-ready format and sends it to Typhoon ASR for transcription.
+6. ถ้าอยู่ในโหมด `Smart Mix` ระบบจะจัดรูปข้อความและใช้ replacement rules เพิ่มเติม. If the active profile is `Smart Mix`, the app formats the text and applies replacement rules.
+7. ถ้าอยู่ในโหมด `TH to ENG` ระบบจะถอดเสียงภาษาไทยก่อน แล้วแปลผลลัพธ์เป็นภาษาอังกฤษในเครื่อง. If the active profile is `TH to ENG`, the app first transcribes Thai speech and then translates the result to English locally.
+8. เมื่อได้ข้อความสุดท้ายแล้ว โปรแกรมจะคัดลอกข้อความลง clipboard ก่อน แล้วพยายาม paste กลับเข้าแอปที่กำลังโฟกัสอยู่; ถ้า paste ไม่สำเร็จ ข้อความจะยังค้างอยู่ใน clipboard ให้ผู้ใช้ paste เอง. Once the final text is ready, the app copies it to the clipboard first and then tries to paste it back into the focused application; if the paste fails, the text remains in the clipboard for manual paste.
+
+---
+
+## หมายเหตุ / Quick Notes
 
 - runtime ของการถอดเสียงและแปลภาษาเป็น local. Runtime transcription and translation are local.
 - บน Wayland บางแอปอาจต้อง paste เองจาก clipboard ถ้า auto-paste ถูกบล็อก. On Wayland, some apps may require manual paste from the clipboard if auto-paste is blocked.
+- ถ้า auto-paste สำเร็จ โปรแกรมจะคืนค่า clipboard เดิม; ถ้า auto-paste ไม่สำเร็จ ข้อความล่าสุดจะค้างอยู่ใน clipboard ให้ paste เอง. If auto-paste succeeds, the app restores the previous clipboard contents; if auto-paste fails, the latest text remains in the clipboard for manual paste.
 - ถ้า hotkey ยังไม่ทำงานหลังติดตั้ง ให้ logout/login ใหม่ก่อน. If shortcuts do not work immediately after install, try logging out and back in first.
 
 ---
